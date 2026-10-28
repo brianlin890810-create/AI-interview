@@ -1,26 +1,57 @@
 @import "tailwindcss";
 
+/* 設計 token：紙張般的暖白底、墨色文字、墨綠強調色 */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --paper: #f6f3ec;
+  --surface: #fffdf8;
+  --ink: #1b1a17;
+  --muted: #6b675e;
+  --line: #e2ddd1;
+  --accent: #1f5c4a;
+  --accent-soft: #dfeae4;
+  --accent-ink: #ffffff;
+  --highlight: #e8b54a;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --paper: #12130f;
+    --surface: #1a1b17;
+    --ink: #ece8de;
+    --muted: #9c978b;
+    --line: #2d2e28;
+    --accent: #6fc2a2;
+    --accent-soft: #1d2d26;
+    --accent-ink: #0d1a14;
+    --highlight: #e8b54a;
   }
 }
 
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-ink: var(--accent-ink);
+  --color-highlight: var(--highlight);
+  --font-sans: var(--font-geist-sans), var(--font-noto-sans-tc), sans-serif;
+  --font-serif: var(--font-noto-serif-tc), serif;
+  --font-mono: var(--font-geist-mono);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+::selection {
+  background: var(--highlight);
+  color: #1b1a17;
 }
