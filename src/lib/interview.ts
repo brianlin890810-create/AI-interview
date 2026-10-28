@@ -3,6 +3,9 @@
 export const TOTAL_QUESTIONS = 3;
 export const MAX_FOLLOWUPS_PER_QUESTION = 1;
 
+// BYOK：前端把使用者自己的 OpenAI API Key 放在這個標頭送到 /api/interview
+export const API_KEY_HEADER = "X-OpenAI-API-Key";
+
 export type Turn =
   | { role: "assistant"; kind: "question" | "followup"; content: string }
   | { role: "user"; content: string };

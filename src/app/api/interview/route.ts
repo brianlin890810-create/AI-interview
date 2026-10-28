@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import {
+  API_KEY_HEADER,
   MAX_FOLLOWUPS_PER_QUESTION,
   TOTAL_QUESTIONS,
   countFollowupsSinceLastQuestion,
@@ -202,11 +203,18 @@ questions 陣列必須剛好 ${groups.length} 個，順序與題號相同。`,
 }
 
 export async function POST(request: Request) {
-  const apiKey = process.env.OPENAI_API_KEY;
+  // BYOK：金鑰由使用者在前端設定，每次請求帶在標頭中，伺服器不保存
+  const apiKey = request.headers.get(API_KEY_HEADER)?.trim() ?? "";
   if (!apiKey) {
     return json(
-      { type: "error", error: "伺服器尚未設定 OPENAI_API_KEY，請檢查 .env.local。" },
-      500,
+      { type: "error", error: "請先在「設定」中輸入你的 OpenAI API Key。" },
+      401,
+    );
+  }
+  if (!/^sk-[\w-]{10,}$/.test(apiKey)) {
+    return json(
+      { type: "error", error: "OpenAI API Key 格式不正確，應以 sk- 開頭。" },
+      401,
     );
   }
 
@@ -274,11 +282,37 @@ export async function POST(request: Request) {
     );
     return json({ type: "question", content, questionNumber: asked + 1 });
   } catch (error) {
-    console.error("[api/interview]", error);
-    const message =
-      error instanceof OpenAI.APIError
-        ? `AI 服務發生錯誤（${error.status ?? "未知狀態"}），請稍後再試。`
-        : "AI 回覆處理失敗，請再試一次。";
-    return json({ type: "error", error: message }, 502);
+    if (error instanceof OpenAI.APIError) {
+      // OpenAI 的 401 訊息會包含部分金鑰，所以只記錄狀態碼
+      console.error(
+        "[api/interview] OpenAI error",
+        error.status,
+        error.status === 401 ? "" : error.message,
+      );
+      if (error.status === 401) {
+        return json(
+          { type: "error", error: "OpenAI API Key 無效或已被撤銷，請到「設定」重新輸入。" },
+          401,
+        );
+      }
+      if (error.status === 429) {
+        return json(
+          { type: "error", error: "OpenAI 帳戶額度不足或請求過於頻繁，請檢查帳戶用量後再試。" },
+          429,
+        );
+      }
+      if (error.status === 404) {
+        return json(
+          { type: "error", error: `你的 API Key 無法使用模型 ${model}。` },
+          502,
+        );
+      }
+      return json(
+        { type: "error", error: `AI 服務發生錯誤（${error.status ?? "未知狀態"}），請稍後再試。` },
+        502,
+      );
+    }
+    console.error("[api/interview]", error instanceof Error ? error.message : error);
+    return json({ type: "error", error: "AI 回覆處理失敗，請再試一次。" }, 502);
   }
 }

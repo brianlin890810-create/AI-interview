@@ -2,11 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
+  API_KEY_HEADER,
   TOTAL_QUESTIONS,
   type Evaluation,
   type InterviewResponse,
   type Turn,
 } from "@/lib/interview";
+import { getApiKey, openSettings, useApiKey } from "@/lib/api-key";
 
 type Stage = "setup" | "interview" | "result";
 
@@ -62,6 +64,8 @@ export default function InterviewPage() {
   const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [keyError, setKeyError] = useState(false);
+  const apiKey = useApiKey();
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -77,15 +81,20 @@ export default function InterviewPage() {
   async function send(nextTurns: Turn[]) {
     setLoading(true);
     setError("");
+    setKeyError(false);
     try {
       const res = await fetch("/api/interview", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          [API_KEY_HEADER]: getApiKey() ?? "",
+        },
         body: JSON.stringify({ jobDescription, turns: nextTurns }),
       });
       const data: InterviewResponse = await res.json();
       if (data.type === "error") {
         setError(data.error);
+        setKeyError(res.status === 401);
       } else if (data.type === "evaluation") {
         setEvaluation(data.evaluation);
         setStage("result");
@@ -104,6 +113,10 @@ export default function InterviewPage() {
   }
 
   function start() {
+    if (!apiKey) {
+      openSettings();
+      return;
+    }
     if (!jobDescription.trim() || loading) return;
     setStage("interview");
     setTurns([]);
@@ -125,6 +138,7 @@ export default function InterviewPage() {
     setAnswer("");
     setEvaluation(null);
     setError("");
+    setKeyError(false);
   }
 
   const awaitingAnswer =
@@ -144,7 +158,25 @@ export default function InterviewPage() {
           <p className="mx-auto mt-4 max-w-lg text-center leading-relaxed text-muted">
             貼上職缺描述，面試官會依此提出 {TOTAL_QUESTIONS} 道題目，並視你的回答追問。
           </p>
-          <div className="mt-10 rounded-2xl border border-line bg-surface p-5 shadow-sm sm:p-6">
+          {!apiKey && (
+            <div className="mt-10 flex flex-col gap-4 rounded-2xl border border-highlight/50 bg-highlight/10 p-5 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-medium">先設定你的 OpenAI API Key</p>
+                <p className="mt-1 text-sm leading-relaxed text-muted">
+                  金鑰只會存在你的瀏覽器中，面試用量會計入你自己的 OpenAI 帳戶。
+                </p>
+              </div>
+              <button
+                onClick={openSettings}
+                className="shrink-0 self-start rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-paper hover:opacity-85 sm:self-auto"
+              >
+                前往設定
+              </button>
+            </div>
+          )}
+          <div
+            className={`${apiKey ? "mt-10" : "mt-4"} rounded-2xl border border-line bg-surface p-5 shadow-sm sm:p-6`}
+          >
             <label htmlFor="jd" className="text-sm font-medium">
               職缺描述
             </label>
@@ -248,9 +280,16 @@ export default function InterviewPage() {
           {error && (
             <div className="mt-4 flex items-center justify-between gap-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
               <span>{error}</span>
-              <button onClick={() => send(turns)} className="shrink-0 font-medium hover:underline">
-                重試
-              </button>
+              <div className="flex shrink-0 gap-4">
+                {keyError && (
+                  <button onClick={openSettings} className="font-medium hover:underline">
+                    開啟設定
+                  </button>
+                )}
+                <button onClick={() => send(turns)} className="font-medium hover:underline">
+                  重試
+                </button>
+              </div>
             </div>
           )}
 
